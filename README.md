@@ -37,10 +37,10 @@ aihf
 
 ### API keys
 
-The app asks for keys the first time it needs them and saves them to `~/.hedge-fund/.env` — nothing to configure up front. It needs:
+The app asks for keys the first time it needs them and saves them to `~/.hedge-fund/.env` — nothing to configure up front. This fork defaults to Eulerpool:
 
-- A [Financial Datasets](https://financialdatasets.ai) API key, for prices, fundamentals, and earnings. Or, instead of a key, the private key of a Base wallet holding USDC: every call then pays for itself with [x402](https://docs.financialdatasets.ai/x402) (`pip install 'aihf[x402]'`; last 365 days of data, non-professional use).
-- One model API key for the investor agents. Supported providers: Anthropic, OpenAI, DeepSeek, Google, xAI, Kimi, TypeSafe (Jev).
+- An [Eulerpool](https://eulerpool.com/developers/register) API key (`EULERPOOL_API_KEY`) for US equity prices, fundamentals, and earnings. Set `DATA_PROVIDER=financial_datasets` to use a [Financial Datasets](https://financialdatasets.ai) key (or x402 wallet) instead — see [`docs/eulerpool-data-provider.md`](docs/eulerpool-data-provider.md).
+- One model API key for the investor agents when the runtime does not already provide one. Supported providers: Anthropic, OpenAI, DeepSeek, Google, xAI, Kimi, TypeSafe (Jev). Cursor / platform-injected keys in the process environment are preferred; the TUI skips model-key prompts when they are present.
 
 Keys exported in your shell always win over the saved file.
 

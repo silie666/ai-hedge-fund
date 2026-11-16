@@ -9,7 +9,7 @@ fetched again after. `live=True` gives the date-less "latest" answers
 (earnings, company facts) the same ten minutes, for a process that stays
 up all day and would otherwise never see a new filing.
 
-    fd = CachedDataClient(FDClient())
+    fd = CachedDataClient(make_data_client())
     prices = fd.get_prices("AAPL", "2024-01-01", "2024-12-31")  # API call
     prices = fd.get_prices("AAPL", "2024-01-01", "2024-12-31")  # disk, ~0ms
 

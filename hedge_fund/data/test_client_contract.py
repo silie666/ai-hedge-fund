@@ -136,6 +136,9 @@ def no_env_credentials(monkeypatch):
     these tests must see only what they pass in."""
     monkeypatch.delenv("FINANCIAL_DATASETS_API_KEY", raising=False)
     monkeypatch.delenv("X402_WALLET_PRIVATE_KEY", raising=False)
+    monkeypatch.delenv("EULERPOOL_API_KEY", raising=False)
+    # FD credential tests below assume the Financial Datasets provider.
+    monkeypatch.setenv("DATA_PROVIDER", "financial_datasets")
 
 
 def test_wallet_alone_pays_per_call_and_sends_no_key(monkeypatch, no_env_credentials):

@@ -50,16 +50,50 @@ def test_picker_and_masked_key_save_or_cancel(save, isolated_configuration):
     asyncio.run(scenario())
 
 
+def test_data_credential_gate_takes_eulerpool_key(monkeypatch, isolated_configuration):
+    """Default DATA_PROVIDER=eulerpool: the gate asks for EULERPOOL_API_KEY."""
+    monkeypatch.setenv("HEDGE_FUND_LLM_MODEL", "jev-1.13.0")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "fixture-typesafe-key")
+    monkeypatch.setenv("DATA_PROVIDER", "eulerpool")
+    monkeypatch.delenv("EULERPOOL_API_KEY", raising=False)
+
+    async def scenario():
+        app = HedgeFundApp()
+        resumed = Mock()
+        async with app.run_test(size=(100, 40)) as pilot:
+            assert home.demand_run_keys(app, resumed) is False
+            await pilot.pause()
+            assert isinstance(app.screen, home.DataKeyPromptScreen)
+            await pilot.press("escape")
+            resumed.assert_not_called()
+            assert not isolated_configuration.exists()
+            assert home.demand_run_keys(app, resumed) is False
+            await pilot.pause()
+            entry = app.screen.query_one("#api-key-input", Input)
+            entry.value = "fixture-eulerpool-secret"
+            entry.focus()
+            await pilot.press("enter")
+            resumed.assert_called_once()
+            assert os.environ["EULERPOOL_API_KEY"] == "fixture-eulerpool-secret"
+            assert isolated_configuration.read_text() == "EULERPOOL_API_KEY=fixture-eulerpool-secret\n"
+            assert stat.S_IMODE(isolated_configuration.stat().st_mode) == 0o600
+            assert home.demand_run_keys(app, resumed) is True
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("field,env_var", [
     ("#api-key-input", "FINANCIAL_DATASETS_API_KEY"),
     ("#wallet-key-input", "X402_WALLET_PRIVATE_KEY"),
 ])
 def test_data_credential_gate_takes_a_key_or_a_wallet(monkeypatch, isolated_configuration, field, env_var):
-    """With no data credential the gate asks for one, on a screen with two
-    fields: an API key, or a wallet private key that pays per call with
-    x402. Enter in either saves that variable and resumes the run."""
+    """With DATA_PROVIDER=financial_datasets and no credential the gate asks
+    for an API key or an x402 wallet private key."""
     monkeypatch.setenv("HEDGE_FUND_LLM_MODEL", "jev-1.13.0")
     monkeypatch.setenv("TYPESAFE_API_KEY", "fixture-typesafe-key")
+    monkeypatch.setenv("DATA_PROVIDER", "financial_datasets")
+    monkeypatch.delenv("FINANCIAL_DATASETS_API_KEY", raising=False)
+    monkeypatch.delenv("X402_WALLET_PRIVATE_KEY", raising=False)
 
     async def scenario():
         app = HedgeFundApp()
@@ -87,7 +121,8 @@ def test_data_credential_gate_takes_a_key_or_a_wallet(monkeypatch, isolated_conf
 
 
 def test_missing_key_gate_save_resumes_and_cancel_does_not(monkeypatch, isolated_configuration):
-    monkeypatch.setenv("FINANCIAL_DATASETS_API_KEY", "fixture-fd-key")
+    monkeypatch.setenv("DATA_PROVIDER", "eulerpool")
+    monkeypatch.setenv("EULERPOOL_API_KEY", "fixture-eulerpool-key")
     monkeypatch.setenv("HEDGE_FUND_LLM_MODEL", "jev-1.13.0")
 
     async def scenario():
