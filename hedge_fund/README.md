@@ -47,10 +47,11 @@ made at session T's close is executed at T+1's close, in both modes.
 ```bash
 poetry install                          # dependencies
 
-# .env needs (at repo root):
-#   FINANCIAL_DATASETS_API_KEY=...      # market/fundamentals data
-#   X402_WALLET_PRIVATE_KEY=0x...       # or pay per call with x402 (needs aihf[x402])
-#   ANTHROPIC_API_KEY=...               # only for LLM agents (Buffett)
+# .env needs (at repo root) — see also docs/eulerpool-data-provider.md:
+#   EULERPOOL_API_KEY=...               # default data provider (US equities)
+#   DATA_PROVIDER=eulerpool             # or financial_datasets
+#   FINANCIAL_DATASETS_API_KEY=...      # only if DATA_PROVIDER=financial_datasets
+#   ANTHROPIC_API_KEY=...               # optional when Cursor/platform injects LLM keys
 
 # THE command. No arguments: launch the interactive app (a Textual TUI).
 # Two modes: paper trading (your funds — run the next session behind an

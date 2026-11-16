@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 NEWS_PAGE = 10  # the most /news/ returns per request
 API_KEY_ENV = "FINANCIAL_DATASETS_API_KEY"
+EULERPOOL_API_KEY_ENV = "EULERPOOL_API_KEY"
 # x402 answers only this far back; older dates get a 403 with the window start.
 X402_HISTORY_DAYS = 365
 
@@ -48,10 +49,23 @@ def payment_error(resp: requests.Response) -> str:
 
 
 def has_data_credential() -> bool:
-    """True when the environment holds something a request can be billed to:
-    an API key, or a wallet to pay per call with x402. The one place that
+    """True when the environment holds a credential for the selected
+    ``DATA_PROVIDER`` (Eulerpool key by default; Financial Datasets API key
+    or x402 wallet when that provider is selected). The one place that
     decides it, so the TUI gates and the client cannot disagree."""
-    return bool(os.environ.get(API_KEY_ENV) or os.environ.get(WALLET_KEY_ENV))
+    # Imported lazily to keep client.py importable without factory cycles.
+    from hedge_fund.data.factory import selected_data_provider
+
+    provider = selected_data_provider()
+    if provider == "financial_datasets":
+        return bool(os.environ.get(API_KEY_ENV) or os.environ.get(WALLET_KEY_ENV))
+    if provider == "eulerpool":
+        return bool(os.environ.get(EULERPOOL_API_KEY_ENV))
+    return bool(
+        os.environ.get(EULERPOOL_API_KEY_ENV)
+        or os.environ.get(API_KEY_ENV)
+        or os.environ.get(WALLET_KEY_ENV)
+    )
 
 
 @dataclass
@@ -71,9 +85,10 @@ class CallMeter:
         self.by_path[urlsplit(url).path] += 1
 
 
-class FDClientError(Exception):
+class DataClientError(Exception):
     """An API request failed for infrastructure reasons (auth, rate limit,
-    server error, network). Distinct from "no data exists" — that returns
+    server error, network), or a provider capability gap that must not be
+    disguised as empty data. Distinct from "no data exists" — that returns
     empty. A backtest must crash on this, not treat it as no-data.
     """
 
@@ -81,6 +96,10 @@ class FDClientError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.path = path
+
+
+class FDClientError(DataClientError):
+    """Financial Datasets infrastructure failure."""
 
 
 class FDClient:

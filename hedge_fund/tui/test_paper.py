@@ -79,9 +79,9 @@ def test_paper_screen_runs_through_the_approval_step(monkeypatch):
     record, decided = executed_and_decided()
     ledger.append(make_session("2025-01-17", decision=decided, nav=100000))
     due = {"value": "2025-01-21"}
-    monkeypatch.setattr(paper, "FDClient", lambda: Mock(__enter__=lambda s: s, __exit__=lambda s, *a: None))
+    monkeypatch.setattr(paper, "make_data_client", lambda: Mock(__enter__=lambda s: s, __exit__=lambda s, *a: None))
     monkeypatch.setattr(paper, "next_session", lambda data, spec, last, **kw: due["value"])
-    monkeypatch.setenv("FINANCIAL_DATASETS_API_KEY", "x")
+    monkeypatch.setenv("EULERPOOL_API_KEY", "x")
     monkeypatch.setenv("HEDGE_FUND_LLM_MODEL", "jev-1.13.0")
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     started: list = []
@@ -267,10 +267,10 @@ def test_paper_screen_enter_on_a_minute_fund_opens_the_same_approval_step(monkey
     the modal, onto the board. For a minute fund the session is the current
     bar, named by its clock time."""
     directory = deploy("fast", make_minute_spec(), ["TEST"], root=paths.PAPER_DIR)
-    for variable in ("FINANCIAL_DATASETS_API_KEY", "TYPESAFE_API_KEY"):
+    for variable in ("EULERPOOL_API_KEY", "TYPESAFE_API_KEY"):
         monkeypatch.setenv(variable, "x")
     monkeypatch.setenv("HEDGE_FUND_LLM_MODEL", "jev-1.13.0")
-    monkeypatch.setattr(paper, "FDClient", lambda: Mock(__enter__=lambda s: s, __exit__=lambda s, *a: None))
+    monkeypatch.setattr(paper, "make_data_client", lambda: Mock(__enter__=lambda s: s, __exit__=lambda s, *a: None))
     monkeypatch.setattr(paper, "next_session", lambda data, spec, last, **kw: "2025-01-21T13:05:00")
     started: list = []
     monkeypatch.setattr(paper.RunSessionScreen, "_run", lambda self: started.append(self._directory))
@@ -301,7 +301,7 @@ def test_paper_screen_enter_on_a_minute_fund_opens_the_same_approval_step(monkey
 def test_paper_screen_space_starts_and_stops_a_runner_at_any_cadence(monkeypatch, cadence):
     spec = make_minute_spec() if cadence == "minute" else make_spec(["pead"], "alpha")
     directory = deploy(spec.name, spec, ["TEST"], root=paths.PAPER_DIR)
-    for variable in ("FINANCIAL_DATASETS_API_KEY", "TYPESAFE_API_KEY"):
+    for variable in ("EULERPOOL_API_KEY", "TYPESAFE_API_KEY"):
         monkeypatch.setenv(variable, "x")
     monkeypatch.setenv("HEDGE_FUND_LLM_MODEL", "jev-1.13.0")
     spawned, stopped = [], []
