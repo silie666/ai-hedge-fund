@@ -56,6 +56,12 @@ EULERPOOL_API_KEY_ENV = "EULERPOOL_API_KEY"
 # weekends and holiday gaps do not break Friday paper ticks on Monday.
 _RECENT_DAYS = 5
 
+# Eulerpool ``/equity/market-cap`` and ``metrics.valuation.marketCap`` are
+# quoted in millions of currency units (sharesOutstanding is likewise in
+# millions). ``metrics.historical[].marketCap`` is absolute dollars — do not
+# scale that path.
+_MARKET_CAP_MILLIONS = 1_000_000.0
+
 # Match calendar surprise dates to SEC 8-K filings within this window.
 _SURPRISE_8K_MATCH_DAYS = 5
 
@@ -617,8 +623,10 @@ class EulerpoolClient:
             cap = _as_float(row.get("marketCap") or row.get("market_cap"))
             if day is None or cap is None or day > end_date[:10]:
                 continue
+            # Series values are in millions; expose absolute currency units.
+            cap_abs = cap * _MARKET_CAP_MILLIONS
             if best is None or day > best[0]:
-                best = (day, cap)
+                best = (day, cap_abs)
         if best is not None:
             return best[1]
 
@@ -948,7 +956,8 @@ def _metrics_from_current(
         period=period,
         currency=data.get("currency"),
         filing_date=None,
-        market_cap=_as_float(valuation.get("marketCap")),
+        market_cap=_scale_market_cap_millions(valuation.get("marketCap")),
+        # enterpriseValue unit is undocumented / often null; leave unscaled.
         enterprise_value=_as_float(valuation.get("enterpriseValue")),
         price_to_earnings_ratio=_as_float(valuation.get("pe")),
         price_to_book_ratio=_as_float(valuation.get("pb")),
@@ -1051,6 +1060,14 @@ def _nearest_date(target: str, candidates: list[str], max_days: int) -> str | No
     return best[1] if best else None
 
 
+def _scale_market_cap_millions(raw) -> float | None:
+    """Convert Eulerpool million-unit market/EV figures to absolute currency."""
+    value = _as_float(raw)
+    if value is None:
+        return None
+    return value * _MARKET_CAP_MILLIONS
+
+
 def _to_ep_filter(item: ScreenFilter) -> dict:
     field = _SCREEN_FIELD_TO_EP.get(item.field, item.field)
     equality = _SCREEN_OP_TO_EP.get(item.operator)
@@ -1062,6 +1079,13 @@ def _to_ep_filter(item: ScreenFilter) -> dict:
     value = item.value
     if item.operator == "in" and isinstance(value, str):
         value = [value]
-    if item.field == "country" and isinstance(value, list):
-        value = [str(v).upper() for v in value]
+    if item.field == "country":
+        # Live Eulerpool screener returns [] for country equality="=" /
+        # scalar value; IN + list works.
+        if isinstance(value, str):
+            value = [value.upper()]
+        elif isinstance(value, list):
+            value = [str(v).upper() for v in value]
+        if equality == "=":
+            equality = "IN"
     return {"id": field, "value": value, "equality": equality}

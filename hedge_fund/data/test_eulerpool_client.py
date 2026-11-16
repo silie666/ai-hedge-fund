@@ -113,7 +113,8 @@ def test_financial_metrics_recent_uses_current(client, monkeypatch):
     _stub(client, [_FakeResponse(200, {
         "ticker": "AAPL",
         "currency": "USD",
-        "valuation": {"pe": 28.5, "marketCap": 1e12},
+        # valuation.marketCap is in millions on the live API.
+        "valuation": {"pe": 28.5, "marketCap": 1e6},
         "profitability": {"roe": 100.0},
         "perShare": {"eps": 6.0},
         "leverage": {},
@@ -123,7 +124,27 @@ def test_financial_metrics_recent_uses_current(client, monkeypatch):
     rows = client.get_financial_metrics("AAPL", today, limit=1)
     assert len(rows) == 1
     assert rows[0].price_to_earnings_ratio == 28.5
+    assert rows[0].market_cap == 1e12
     assert rows[0].filing_date is None
+
+
+def test_get_market_cap_scales_millions_series(client):
+    today = date.today().isoformat()
+    _stub(client, [_FakeResponse(200, {
+        "currency": "USD",
+        "sharesOutstanding": 15000.0,
+        "data": [
+            {"timestamp": f"{today}T00:00:00.000Z", "price": 200.0, "marketCap": 3_000_000},
+        ],
+    })])
+    assert client.get_market_cap("AAPL", today) == 3_000_000 * 1_000_000
+
+
+def test_country_eq_filter_rewrites_to_in_list():
+    from hedge_fund.data.eulerpool_client import _to_ep_filter
+
+    body = _to_ep_filter(ScreenFilter(field="country", operator="eq", value="us"))
+    assert body == {"id": "country", "value": ["US"], "equality": "IN"}
 
 
 def test_financial_metrics_historical_without_dates_raises(client):
