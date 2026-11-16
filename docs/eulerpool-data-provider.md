@@ -31,7 +31,7 @@ Wiring: `make_data_client()` in `hedge_fund/data/factory.py` builds
 | `get_company_facts` | Yes | `/equity/profile` |
 | `get_news` | Yes | `/research/news/{ticker}`; client-side date filter |
 | `get_insider_trades` | Best-effort | `/equity/insider-trades`; local date filter; field shapes vary |
-| `get_market_cap` | Yes | `/equity/market-cap` history filtered by `end_date` |
+| `get_market_cap` | Yes | `/equity/market-cap` history filtered by `end_date`; API series is in **millions** → client scales to absolute currency |
 | `get_earnings` / `get_earnings_history` | Best-effort PEAD | Calendar surprises + nearest SEC 8-K when available |
 | `screen` / `screener_fields` | Best-effort | No historical `as_of`; near-today only, else **raises** |
 
@@ -83,6 +83,12 @@ screens run (US country filter added by default); rows carry a synthetic
 `filing_date=as_of`. Historical `as_of` **raises**. Point-in-time universe
 construction for backtests should use Financial Datasets or a local PIT
 universe file.
+
+Country filters must use `IN` + a list (the client rewrites `eq`/`=`
+accordingly); scalar `equality="="` returns an empty result from the API.
+Numeric `marketCap` filters did not return rows in live smoke (column /
+unit support unclear) — treat screener as best-effort for country/sector
+universe picks, not for FD-style factor screens.
 
 ## Tests
 
